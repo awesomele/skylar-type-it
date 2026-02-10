@@ -35,6 +35,7 @@ const TypingPractice = () => {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentWordPosition, setCurrentWordPosition] = useState({ x: 0, y: 0 });
   const [completedWords, setCompletedWords] = useState([]);
+  const [isTypingAreaFocused, setIsTypingAreaFocused] = useState(false);
   
   const inputRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -177,10 +178,15 @@ const TypingPractice = () => {
       setPassageLength(maxLength);
     }
     
-    // Refocus the input after state updates
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
+    // Don't refocus if user is editing the vocabulary pool
+    // Check if the active element is a textarea
+    if (document.activeElement?.tagName !== 'TEXTAREA' || document.activeElement === inputRef.current) {
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+    }
   }, [passageLength, practiceMode, customMaterial, customTypingPool]);
 
   useEffect(() => {
@@ -916,7 +922,21 @@ const TypingPractice = () => {
           )}
 
           {practiceMode === 'memorize' ? (
-            <div className="bg-white border-2 border-gray-200 rounded-lg p-12 mb-6 text-center min-h-[400px] flex flex-col items-center justify-center">
+            <div 
+              className={`bg-white rounded-lg p-12 mb-6 text-center min-h-[400px] flex flex-col items-center justify-center relative transition-all duration-300 cursor-pointer ${
+                isComplete 
+                  ? 'border-4 animate-rainbow-border' 
+                  : isTypingAreaFocused 
+                    ? 'border-4 border-blue-400 shadow-breathing' 
+                    : 'border-2 border-gray-200'
+              }`}
+              onClick={() => inputRef.current?.focus()}
+            >
+              {!isComplete && !isTypingAreaFocused && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-gray-400 text-lg">Click here to start typing</div>
+                </div>
+              )}
               {!isComplete ? (
                 <>
                   <div className="text-6xl font-mono mb-12 leading-relaxed font-semibold">
@@ -949,64 +969,110 @@ const TypingPractice = () => {
             </div>
           ) : (
             <div 
-              ref={textContainerRef}
-              className="text-2xl leading-relaxed font-mono mb-6 p-6 bg-gray-50 rounded relative overflow-visible"
+              className={`rounded-lg p-6 mb-6 relative transition-all duration-300 cursor-pointer ${
+                isComplete 
+                  ? 'border-4 animate-rainbow-border bg-gray-50' 
+                  : isTypingAreaFocused 
+                    ? 'border-4 border-blue-400 shadow-breathing bg-gray-50' 
+                    : 'border-2 border-gray-200 bg-gray-50'
+              }`}
               style={{ minHeight: '120px' }}
+              onClick={() => inputRef.current?.focus()}
             >
-              {renderText()}
-              
-              {practiceMode === 'memorize' && getCurrentWordExplanation() && (
-                <div 
-                  className="absolute z-50 pointer-events-none"
-                  style={{
-                    left: `${Math.max(10, Math.min(currentWordPosition.x - (textContainerRef.current?.getBoundingClientRect().left || 0), (textContainerRef.current?.offsetWidth || 400) - 10))}px`,
-                    top: `${Math.max(10, currentWordPosition.y - (textContainerRef.current?.getBoundingClientRect().top || 0) - 5)}px`,
-                    transform: (() => {
-                      const containerWidth = textContainerRef.current?.offsetWidth || 400;
-                      const relativeX = currentWordPosition.x - (textContainerRef.current?.getBoundingClientRect().left || 0);
-                      if (relativeX < 150) return 'translate(0, -100%)';
-                      else if (relativeX > containerWidth - 150) return 'translate(-100%, -100%)';
-                      else return 'translate(-50%, -100%)';
-                    })()
-                  }}
-                >
-                  <div className="bg-blue-600 text-white px-3 py-2 rounded shadow-xl text-sm max-w-md">
-                    <div className="whitespace-pre-line">{getCurrentWordExplanation()}</div>
-                    <div 
-                      className="absolute bottom-0 rotate-45 w-2 h-2 bg-blue-600"
-                      style={{
-                        left: (() => {
-                          const containerWidth = textContainerRef.current?.offsetWidth || 400;
-                          const relativeX = currentWordPosition.x - (textContainerRef.current?.getBoundingClientRect().left || 0);
-                          if (relativeX < 150) return '10px';
-                          else if (relativeX > containerWidth - 150) return 'calc(100% - 10px)';
-                          else return '50%';
-                        })(),
-                        transform: (() => {
-                          const containerWidth = textContainerRef.current?.offsetWidth || 400;
-                          const relativeX = currentWordPosition.x - (textContainerRef.current?.getBoundingClientRect().left || 0);
-                          if (relativeX < 150) return 'translate(0, 50%)';
-                          else if (relativeX > containerWidth - 150) return 'translate(-100%, 50%)';
-                          else return 'translate(-50%, 50%)';
-                        })()
-                      }}
-                    ></div>
-                  </div>
+              {!isComplete && !isTypingAreaFocused && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-gray-400 text-lg">Click here to start typing</div>
                 </div>
               )}
+              <div 
+                ref={textContainerRef}
+                className="text-2xl leading-relaxed font-mono relative overflow-visible"
+              >
+                {renderText()}
+                
+                {practiceMode === 'memorize' && getCurrentWordExplanation() && (
+                  <div 
+                    className="absolute z-50 pointer-events-none"
+                    style={{
+                      left: `${Math.max(10, Math.min(currentWordPosition.x - (textContainerRef.current?.getBoundingClientRect().left || 0), (textContainerRef.current?.offsetWidth || 400) - 10))}px`,
+                      top: `${Math.max(10, currentWordPosition.y - (textContainerRef.current?.getBoundingClientRect().top || 0) - 5)}px`,
+                      transform: (() => {
+                        const containerWidth = textContainerRef.current?.offsetWidth || 400;
+                        const relativeX = currentWordPosition.x - (textContainerRef.current?.getBoundingClientRect().left || 0);
+                        if (relativeX < 150) return 'translate(0, -100%)';
+                        else if (relativeX > containerWidth - 150) return 'translate(-100%, -100%)';
+                        else return 'translate(-50%, -100%)';
+                      })()
+                    }}
+                  >
+                    <div className="bg-blue-600 text-white px-3 py-2 rounded shadow-xl text-sm max-w-md">
+                      <div className="whitespace-pre-line">{getCurrentWordExplanation()}</div>
+                      <div 
+                        className="absolute bottom-0 rotate-45 w-2 h-2 bg-blue-600"
+                        style={{
+                          left: (() => {
+                            const containerWidth = textContainerRef.current?.offsetWidth || 400;
+                            const relativeX = currentWordPosition.x - (textContainerRef.current?.getBoundingClientRect().left || 0);
+                            if (relativeX < 150) return '10px';
+                            else if (relativeX > containerWidth - 150) return 'calc(100% - 10px)';
+                            else return '50%';
+                          })(),
+                          transform: (() => {
+                            const containerWidth = textContainerRef.current?.offsetWidth || 400;
+                            const relativeX = currentWordPosition.x - (textContainerRef.current?.getBoundingClientRect().left || 0);
+                            if (relativeX < 150) return 'translate(0, 50%)';
+                            else if (relativeX > containerWidth - 150) return 'translate(-100%, 50%)';
+                            else return 'translate(-50%, 50%)';
+                          })()
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
+
+          <style>{`
+            @keyframes breathing {
+              0%, 100% {
+                box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+              }
+              50% {
+                box-shadow: 0 0 50px rgba(59, 130, 246, 0.5);
+              }
+            }
+            
+            .shadow-breathing {
+              animation: breathing 2.5s ease-in-out infinite;
+            }
+            
+            @keyframes rainbow {
+              0% { border-color: #ff0000; box-shadow: 0 0 30px #ff0000; }
+              16% { border-color: #ff8800; box-shadow: 0 0 30px #ff8800; }
+              33% { border-color: #ffff00; box-shadow: 0 0 30px #ffff00; }
+              50% { border-color: #00ff00; box-shadow: 0 0 30px #00ff00; }
+              66% { border-color: #0088ff; box-shadow: 0 0 30px #0088ff; }
+              83% { border-color: #8800ff; box-shadow: 0 0 30px #8800ff; }
+              100% { border-color: #ff0000; box-shadow: 0 0 30px #ff0000; }
+            }
+            
+            .animate-rainbow-border {
+              animation: rainbow 2s linear infinite;
+            }
+          `}</style>
 
           <textarea
             ref={inputRef}
             value={userInput}
             onChange={handleInputChange}
+            onFocus={() => setIsTypingAreaFocused(true)}
+            onBlur={() => setIsTypingAreaFocused(false)}
             className="w-full p-4 border-2 border-gray-200 rounded font-mono text-lg focus:outline-none focus:border-blue-500 resize-none"
             style={{ opacity: 0, height: 0, position: 'absolute', top: 0, left: 0 }}
             rows="4"
             placeholder="Start typing here..."
             disabled={isComplete}
-            autoFocus
           />
         </div>
 
