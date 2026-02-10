@@ -18,6 +18,7 @@ pnpm-debug.log*
 .DS_Store
 
 # App folder (Vite scaffold lives here)
+/app/
 /app/node_modules/
 /app/dist/
 /app/.vite/
