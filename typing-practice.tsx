@@ -710,9 +710,33 @@ const TypingPractice = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm text-gray-600 font-medium">
-                Custom vocabulary pool {practiceMode === 'memorize' ? '(word - explanation)' : '(comma or space separated)'}:
-              </label>
+              <div className="flex items-center gap-3">
+                <label className="block text-sm text-gray-600 font-medium">
+                  Custom vocabulary pool {practiceMode === 'memorize' ? '(word - explanation)' : '(comma or space separated)'}:
+                </label>
+                <div className="bg-blue-50 rounded-full px-3 py-1">
+                  <span className="text-sm font-semibold text-blue-700">
+                    {practiceMode === 'memorize' ? (() => {
+                      const lines = customMaterial.split('\n');
+                      const words = [];
+                      for (let line of lines) {
+                        if (line.includes('-')) {
+                          const dashIndex = line.indexOf('-');
+                          const word = line.substring(0, dashIndex).trim();
+                          if (word) words.push(word);
+                        }
+                      }
+                      return words.length;
+                    })() : (() => {
+                      const poolWords = customTypingPool
+                        .split(/[,\s]+/)
+                        .map(w => w.trim())
+                        .filter(w => w.length > 0);
+                      return poolWords.length > 0 ? poolWords.length : wordPool.length;
+                    })()} words
+                  </span>
+                </div>
+              </div>
               <button
                 onClick={() => setIsVocabPoolExpanded(!isVocabPoolExpanded)}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
