@@ -25,3 +25,9 @@ pnpm-debug.log*
 /app/.env
 /app/.env.*
 !/app/.env.example
+
+# Generated local scaffold used during setup
+/_local_do_not_track_app/
+/_backup/
+
+/_local_do_not_track_app.bak.*/

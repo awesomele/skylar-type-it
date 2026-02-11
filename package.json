@@ -1,0 +1,8 @@
+{
+  "name": "skylar-type-it-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "./scripts/dev.sh",
+    "dev:bun": "./scripts/dev.sh bun"
+  }
+}
