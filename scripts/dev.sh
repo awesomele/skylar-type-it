@@ -39,14 +39,19 @@ if [[ ! -d "$APP_DIR/node_modules" ]]; then
   fi
 fi
 
-# Ensure Tailwind tooling exists for utility classes used by typing-practice.tsx.
+# Ensure Tailwind tooling exists for utility classes used by src/.
 if ! grep -q '"@tailwindcss/vite"' "$APP_DIR/package.json"; then
   npm --prefix "$APP_DIR" install -D tailwindcss @tailwindcss/vite
 fi
 
-# Keep the source TSX in sync when edited at repo root.
-if [[ -f "$ROOT_DIR/typing-practice.tsx" ]]; then
-  cp "$ROOT_DIR/typing-practice.tsx" "$APP_DIR/src/typing-practice.tsx"
+# Sync the tracked source directory into the local app.
+# Excludes test files and Vite-scaffold files managed below.
+if [[ -d "$ROOT_DIR/src" ]]; then
+  rsync -a \
+    --exclude '__tests__' \
+    --exclude '*.test.ts' \
+    --exclude '*.test.tsx' \
+    "$ROOT_DIR/src/" "$APP_DIR/src/"
 fi
 
 # Ensure Vite uses Tailwind plugin.
@@ -72,11 +77,20 @@ body,
 }
 EOF
 
-# Ensure Vite entry renders typing-practice.
+# Point Vite entry at src/TypingPractice.
 MAIN_FILE="$APP_DIR/src/main.tsx"
-if grep -q "import App from './App.tsx'" "$MAIN_FILE"; then
-  sed -i '' "s#import App from './App.tsx'#import App from './typing-practice'#" "$MAIN_FILE"
-fi
+cat > "$MAIN_FILE" <<'EOF'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './TypingPractice'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+EOF
 
 if [[ "$RUNTIME" == "bun" ]]; then
   (cd "$APP_DIR" && bunx vite --host "$HOST" --port "$PORT")
