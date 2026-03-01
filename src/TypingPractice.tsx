@@ -14,6 +14,7 @@ import { VocabularyEditor } from './components/VocabularyEditor';
 import { TextDisplay } from './components/TextDisplay';
 import { ProgressBar } from './components/ProgressBar';
 import { CompletionBanner } from './components/CompletionBanner';
+import { WpmChart } from './components/WpmChart';
 
 const TypingPractice = () => {
   // --- Content state ---
@@ -37,6 +38,9 @@ const TypingPractice = () => {
   const [completedWords, setCompletedWords] = useState<string[]>([]);
   const [wordExplanations, setWordExplanations] = useState<WordExplanations>({});
   const [currentWordPosition, setCurrentWordPosition] = useState<WordPosition>({ x: 0, y: 0 });
+
+  // --- WPM history (typing mode only) ---
+  const [wpmHistory, setWpmHistory] = useState<{ time: number; wpm: number }[]>([]);
 
   // --- UI state ---
   const [isTypingAreaFocused, setIsTypingAreaFocused] = useState(false);
@@ -74,6 +78,7 @@ const TypingPractice = () => {
     setIsComplete(false);
     setCurrentWordIndex(0);
     setCompletedWords([]);
+    setWpmHistory([]);
     streak.reset();
     animations.reset();
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -97,6 +102,15 @@ const TypingPractice = () => {
     }, 100);
     return () => clearInterval(interval);
   }, [startTime, isComplete]);
+
+  // WPM history sampling — one point per second in typing mode
+  useEffect(() => {
+    if (practiceMode !== 'typing' || wpm === 0 || isComplete) return;
+    setWpmHistory((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1].time === timeElapsed) return prev;
+      return [...prev, { time: timeElapsed, wpm }];
+    });
+  }, [timeElapsed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // WPM + accuracy + word position (typing mode)
   useEffect(() => {
@@ -306,6 +320,8 @@ const TypingPractice = () => {
               textLength={text.length}
               formatTime={formatTime}
             />
+
+            {practiceMode === 'typing' && <WpmChart wpmHistory={wpmHistory} />}
 
             <div className="bg-white rounded-lg shadow-sm p-8 mb-6 relative">
               {practiceMode === 'memorize' && (

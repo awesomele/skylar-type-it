@@ -200,6 +200,28 @@ describe('TypingPractice – streak tracking', () => {
   });
 });
 
+describe('TypingPractice – WPM chart', () => {
+  it('shows WPM Trend section in typing mode', () => {
+    render(<TypingPractice />);
+    expect(screen.getByText('WPM Trend')).toBeInTheDocument();
+  });
+
+  it('hides WPM Trend section in memorize mode', async () => {
+    const user = userEvent.setup();
+    render(<TypingPractice />);
+    const memorizeRadio = screen.getByLabelText(/memorize mode/i);
+    await user.click(memorizeRadio);
+    await waitFor(() => {
+      expect(screen.queryByText('WPM Trend')).toBeNull();
+    });
+  });
+
+  it('shows placeholder text before typing starts', () => {
+    render(<TypingPractice />);
+    expect(screen.getByText(/start typing to see your wpm trend/i)).toBeInTheDocument();
+  });
+});
+
 describe('TypingPractice – vocabulary editor', () => {
   it('shows word count badge', () => {
     render(<TypingPractice />);
