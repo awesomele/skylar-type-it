@@ -137,3 +137,61 @@ describe('WpmChart – edge cases', () => {
     expect(container.querySelector('polyline')).toBeInTheDocument();
   });
 });
+
+describe('WpmChart – best record', () => {
+  const current = [
+    { time: 1, wpm: 40 },
+    { time: 2, wpm: 50 },
+  ];
+  const best = [
+    { time: 1, wpm: 60 },
+    { time: 2, wpm: 70 },
+    { time: 3, wpm: 65 },
+  ];
+
+  it('renders two polylines when both datasets have >= 2 points', () => {
+    const { container } = render(<WpmChart wpmHistory={current} bestWpmHistory={best} />);
+    expect(container.querySelectorAll('polyline')).toHaveLength(2);
+  });
+
+  it('renders only one polyline when only current data (no bestWpmHistory)', () => {
+    const { container } = render(<WpmChart wpmHistory={current} />);
+    expect(container.querySelectorAll('polyline')).toHaveLength(1);
+  });
+
+  it('renders SVG when only best data exists (no current data yet)', () => {
+    const { container } = render(<WpmChart wpmHistory={[]} bestWpmHistory={best} />);
+    expect(container.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('renders one polyline (best) when only best data exists', () => {
+    const { container } = render(<WpmChart wpmHistory={[]} bestWpmHistory={best} />);
+    expect(container.querySelectorAll('polyline')).toHaveLength(1);
+  });
+
+  it('"Best" legend label is visible when bestWpmHistory is provided', () => {
+    render(<WpmChart wpmHistory={current} bestWpmHistory={best} />);
+    expect(screen.getByText('Best')).toBeInTheDocument();
+  });
+
+  it('"Current" legend label is visible when current data is present', () => {
+    render(<WpmChart wpmHistory={current} bestWpmHistory={best} />);
+    expect(screen.getByText('Current')).toBeInTheDocument();
+  });
+
+  it('total circle count equals current + best when both provided', () => {
+    const { container } = render(<WpmChart wpmHistory={current} bestWpmHistory={best} />);
+    const circles = container.querySelectorAll('circle');
+    expect(circles).toHaveLength(current.length + best.length);
+  });
+
+  it('shows "Start typing to race your best" when only best exists', () => {
+    render(<WpmChart wpmHistory={[]} bestWpmHistory={best} />);
+    expect(screen.getByText(/start typing to race your best/i)).toBeInTheDocument();
+  });
+
+  it('shows "Start typing to see your WPM trend" when neither has data', () => {
+    render(<WpmChart wpmHistory={[]} />);
+    expect(screen.getByText(/start typing to see your wpm trend/i)).toBeInTheDocument();
+  });
+});

@@ -16,6 +16,17 @@ import { ProgressBar } from './components/ProgressBar';
 import { CompletionBanner } from './components/CompletionBanner';
 import { WpmChart } from './components/WpmChart';
 
+const BEST_RECORD_KEY = 'skylar-type-it-best-record';
+interface BestRecord { avgWpm: number; history: { time: number; wpm: number }[]; }
+
+function loadBestRecord(): BestRecord | null {
+  try { const raw = localStorage.getItem(BEST_RECORD_KEY); return raw ? JSON.parse(raw) : null; }
+  catch { return null; }
+}
+function saveBestRecord(r: BestRecord) {
+  try { localStorage.setItem(BEST_RECORD_KEY, JSON.stringify(r)); } catch {}
+}
+
 const TypingPractice = () => {
   // --- Content state ---
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('typing');
@@ -41,6 +52,9 @@ const TypingPractice = () => {
 
   // --- WPM history (typing mode only) ---
   const [wpmHistory, setWpmHistory] = useState<{ time: number; wpm: number }[]>([]);
+  const [bestWpmHistory, setBestWpmHistory] = useState<{ time: number; wpm: number }[]>(
+    () => loadBestRecord()?.history ?? []
+  );
 
   // --- UI state ---
   const [isTypingAreaFocused, setIsTypingAreaFocused] = useState(false);
@@ -58,7 +72,18 @@ const TypingPractice = () => {
   const clampedLength = Math.min(passageLength, maxPassageLength);
 
   // --- Helpers ---
+  function maybeSaveBest(history: { time: number; wpm: number }[]) {
+    if (history.length < 2) return;
+    const avgWpm = history.reduce((s, d) => s + d.wpm, 0) / history.length;
+    const stored = loadBestRecord();
+    if (!stored || avgWpm > stored.avgWpm) {
+      saveBestRecord({ avgWpm, history });
+    }
+  }
+
   function newSession(overridePracticeMode?: PracticeMode) {
+    if (practiceMode === 'typing') maybeSaveBest(wpmHistory);
+    setBestWpmHistory(loadBestRecord()?.history ?? []);
     const mode = overridePracticeMode ?? practiceMode;
     const { text: newText, explanations } = generateText({
       practiceMode: mode,
@@ -111,6 +136,12 @@ const TypingPractice = () => {
       return [...prev, { time: timeElapsed, wpm }];
     });
   }, [timeElapsed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save best record when session completes
+  useEffect(() => {
+    if (!isComplete || practiceMode !== 'typing') return;
+    maybeSaveBest(wpmHistory);
+  }, [isComplete]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // WPM + accuracy + word position (typing mode)
   useEffect(() => {
@@ -321,7 +352,9 @@ const TypingPractice = () => {
               formatTime={formatTime}
             />
 
-            {practiceMode === 'typing' && <WpmChart wpmHistory={wpmHistory} />}
+            {practiceMode === 'typing' && (
+              <WpmChart wpmHistory={wpmHistory} bestWpmHistory={bestWpmHistory} />
+            )}
 
             <div className="bg-white rounded-lg shadow-sm p-8 mb-6 relative">
               {practiceMode === 'memorize' && (

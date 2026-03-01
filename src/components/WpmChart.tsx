@@ -7,6 +7,7 @@ interface DataPoint {
 
 interface Props {
   wpmHistory: DataPoint[];
+  bestWpmHistory?: DataPoint[];
 }
 
 const PADDING = { top: 16, right: 20, bottom: 32, left: 44 };
@@ -15,8 +16,11 @@ const VIEW_H = 160;
 const CHART_W = VIEW_W - PADDING.left - PADDING.right;
 const CHART_H = VIEW_H - PADDING.top - PADDING.bottom;
 
-export function WpmChart({ wpmHistory }: Props) {
-  if (wpmHistory.length < 2) {
+export function WpmChart({ wpmHistory, bestWpmHistory }: Props) {
+  const hasCurrentData = wpmHistory.length >= 2;
+  const hasBestData = (bestWpmHistory?.length ?? 0) >= 2;
+
+  if (!hasCurrentData && !hasBestData) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">WPM Trend</div>
@@ -27,13 +31,18 @@ export function WpmChart({ wpmHistory }: Props) {
     );
   }
 
-  const minTime = wpmHistory[0].time;
-  const maxTime = wpmHistory[wpmHistory.length - 1].time;
-  const wpmValues = wpmHistory.map((d) => d.wpm);
+  // Combine both datasets for a unified scale
+  const allData = [
+    ...(hasCurrentData ? wpmHistory : []),
+    ...(hasBestData ? bestWpmHistory! : []),
+  ];
+
+  const minTime = Math.min(...allData.map((d) => d.time));
+  const maxTime = Math.max(...allData.map((d) => d.time));
+  const wpmValues = allData.map((d) => d.wpm);
   const rawMin = Math.min(...wpmValues);
   const rawMax = Math.max(...wpmValues);
 
-  // Add vertical padding so the line doesn't touch the edges
   const pad = Math.max(5, Math.ceil((rawMax - rawMin) * 0.15));
   const yMin = Math.max(0, rawMin - pad);
   const yMax = rawMax + pad;
@@ -47,7 +56,12 @@ export function WpmChart({ wpmHistory }: Props) {
     return PADDING.top + (1 - (w - yMin) / yRange) * CHART_H;
   }
 
-  const points = wpmHistory.map((d) => `${toX(d.time)},${toY(d.wpm)}`).join(' ');
+  const currentPoints = hasCurrentData
+    ? wpmHistory.map((d) => `${toX(d.time)},${toY(d.wpm)}`).join(' ')
+    : '';
+  const bestPoints = hasBestData
+    ? bestWpmHistory!.map((d) => `${toX(d.time)},${toY(d.wpm)}`).join(' ')
+    : '';
 
   // Y-axis ticks: 4 evenly spaced values
   const yTicks = Array.from({ length: 4 }, (_, i) =>
@@ -62,7 +76,23 @@ export function WpmChart({ wpmHistory }: Props) {
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-      <div className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">WPM Trend</div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs text-gray-400 uppercase tracking-wide font-medium">WPM Trend</div>
+        <div className="flex items-center gap-4 text-xs text-gray-400">
+          {hasBestData && (
+            <span className="flex items-center gap-1">
+              <span style={{ display: 'inline-block', width: 20, borderTop: '2px dashed #cbd5e1' }} />
+              Best
+            </span>
+          )}
+          {hasCurrentData && (
+            <span className="flex items-center gap-1">
+              <span style={{ display: 'inline-block', width: 20, borderTop: '2px solid #3b82f6' }} />
+              Current
+            </span>
+          )}
+        </div>
+      </div>
       <svg
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
         className="w-full"
@@ -129,27 +159,58 @@ export function WpmChart({ wpmHistory }: Props) {
           strokeWidth={1}
         />
 
-        {/* WPM line */}
-        <polyline
-          points={points}
-          fill="none"
-          stroke="#3b82f6"
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        {/* Best line (back layer) */}
+        {hasBestData && (
+          <>
+            <polyline
+              points={bestPoints}
+              fill="none"
+              stroke="#cbd5e1"
+              strokeWidth={2}
+              strokeDasharray="4 3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            {bestWpmHistory!.map((d, i) => (
+              <circle
+                key={`best-${i}`}
+                cx={toX(d.time)}
+                cy={toY(d.wpm)}
+                r={2}
+                fill="#cbd5e1"
+              />
+            ))}
+          </>
+        )}
 
-        {/* Data point dots */}
-        {wpmHistory.map((d, i) => (
-          <circle
-            key={i}
-            cx={toX(d.time)}
-            cy={toY(d.wpm)}
-            r={3}
-            fill="#3b82f6"
-          />
-        ))}
+        {/* Current line (front layer) */}
+        {hasCurrentData && (
+          <>
+            <polyline
+              points={currentPoints}
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            {wpmHistory.map((d, i) => (
+              <circle
+                key={`current-${i}`}
+                cx={toX(d.time)}
+                cy={toY(d.wpm)}
+                r={3}
+                fill="#3b82f6"
+              />
+            ))}
+          </>
+        )}
       </svg>
+      {!hasCurrentData && hasBestData && (
+        <div className="text-center text-xs text-gray-300 mt-1">
+          Start typing to race your best
+        </div>
+      )}
     </div>
   );
 }
